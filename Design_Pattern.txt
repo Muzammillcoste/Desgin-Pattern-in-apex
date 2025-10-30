@@ -1,1 +1,83 @@
+Factory Pattern 
 
+public interface TriggerHandler {
+    void handle(List<SObject> newList);
+}
+
+public class AccountHandler implements TriggerHandler {
+    public void handle(List<SObject> newList) {
+        System.debug('Account trigger logic...');
+    }
+}
+
+public class ContactHandler implements TriggerHandler {
+    public void handle(List<SObject> newList) {
+        System.debug('Contact trigger logic...');
+    }
+}
+
+public class TriggerFactory {
+    public static TriggerHandler getHandler(String objectName) {
+        if(objectName == 'Account') return new AccountHandler();
+        if(objectName == 'Contact') return new ContactHandler();
+        return null;
+    }
+}
+
+trigger UniversalTrigger on Account, Contact (before insert) {
+    TriggerHandler handler = TriggerFactory.getHandler(Trigger.sObjectType.getDescribe().getName());
+    if(handler != null) handler.handle(Trigger.new);
+}
+-----------------------------------------------------------------------------------------------------------
+UnitOfWork
+
+public class UnitOfWork {
+    private List<SObject> recordsToInsert = new List<SObject>();
+    private List<SObject> recordsToUpdate = new List<SObject>();
+
+    public void registerNew(SObject record) {
+        recordsToInsert.add(record);
+    }
+
+    public void registerDirty(SObject record) {
+        recordsToUpdate.add(record);
+    }
+
+    public void commitWork() {
+        if(!recordsToInsert.isEmpty()) {
+            insert recordsToInsert;
+        }
+        if(!recordsToUpdate.isEmpty()) {
+            update recordsToUpdate;
+        }
+    }
+}
+public class AccountService {
+    public static void createAccountWithContact() {
+        UnitOfWork uow = new UnitOfWork();
+
+        Account acc = new Account(Name = 'Muzzammil Industries');
+        uow.registerNew(acc);
+
+        Contact con = new Contact(FirstName = 'Muzzammil', LastName = 'Rizvi');
+        uow.registerNew(con);
+
+        // Perform DML at once
+        uow.commitWork();
+    }
+}
+----------------------------------------------------------------------------------
+Singleton
+public class Logger {
+    private static Logger instance;
+    private List<String> logs = new List<String>();
+
+    private Logger() {}
+
+    public static Logger getInstance() {
+        if (instance == null) instance = new Logger();
+        return instance;
+    }
+
+    public void log(String msg) { logs.add(msg); }
+}
